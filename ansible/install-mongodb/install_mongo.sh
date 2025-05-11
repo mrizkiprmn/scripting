@@ -1,0 +1,1 @@
+ansible-playbook -i /Users/rizkipermana/pts/infra/bash-script/ansible/hosts /Users/rizkipermana/pts/infra/bash-script/ansible/install-mongodb/playbook.yaml

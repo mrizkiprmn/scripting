@@ -1,0 +1,41 @@
+- name: Install and configure MySQL Server on Ubuntu
+  hosts: mongolocal
+  become: true
+
+  tasks:
+    - name: Update apt cache and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install MySQL Server
+      apt:
+        name: mysql-server
+        state: present
+
+    - name: Ensure MySQL service is enabled and running
+      systemd:
+        name: mysql
+        state: started
+        enabled: yes
+
+    - name: Configure MySQL bind-address to 0.0.0.0
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+        backup: yes
+
+    - name: Restart MySQL to apply changes
+      systemd:
+        name: mysql
+        state: restarted
+
+    - name: Verify MySQL status
+      command: systemctl status mysql
+      register: mysql_status
+      changed_when: false
+
+    - name: Show MySQL status output
+      debug:
+        var: mysql_status.stdout_lines

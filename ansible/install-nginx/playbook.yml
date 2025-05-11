@@ -1,0 +1,25 @@
+- name: Install and start nginx
+  hosts: mongolocal
+  become: true
+
+  tasks:
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Ensure nginx is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Verify Nginx Status
+      shell: systemctl status nginx
+      register: nginx_status
+      changed_when: false
+
+    - name: Show Nginx Status Output
+      debug:
+        var: nginx_status.stdout_lines
