@@ -10,7 +10,7 @@
 				"iam:DeleteAccessKey",
 				"iam:GetUser"
 			],
-			"Resource": "arn:aws:iam::545925913562:user/test-rotation"
+			"Resource": "arn:aws:iam::<account_id>:user/test-rotation"
 		}
 	]
 }

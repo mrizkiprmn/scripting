@@ -1,0 +1,34 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: your-cluster
+spec:
+  amiFamily: Bottlerocket
+
+  subnetSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: "your-cluster"
+
+  securityGroupSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: "your-cluster"
+
+  role: "KarpenterNodeRole-your-cluster"
+
+  tags:
+    nodegroup: your-cluster
+    managed-by: karpenter
+
+  blockDeviceMappings:
+  - deviceName: /dev/xvda
+    ebs:
+      volumeSize: 20Gi
+      volumeType: gp3
+      iops: 3000
+      deleteOnTermination: true
+  - deviceName: /dev/xvdb
+    ebs:
+      volumeSize: 100Gi
+      volumeType: gp3
+      iops: 3000
+      deleteOnTermination: true
