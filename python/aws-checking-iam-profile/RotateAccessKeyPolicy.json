@@ -1,0 +1,16 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": [
+				"iam:ListAccessKeys",
+				"iam:CreateAccessKey",
+				"iam:UpdateAccessKey",
+				"iam:DeleteAccessKey",
+				"iam:GetUser"
+			],
+			"Resource": "arn:aws:iam::545925913562:user/test-rotation"
+		}
+	]
+}
