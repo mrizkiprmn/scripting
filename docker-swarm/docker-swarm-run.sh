@@ -1,0 +1,1 @@
+docker stack deploy -c nginx-swarm.yaml nginx_stack
