@@ -1,0 +1,42 @@
+--- 
+- name: Update Gitlab
+  hosts: gitlab-server
+  become: true
+  vars_files:
+    - group_vars/all.yaml
+
+  tasks:
+    - name: Create GitLab backup before upgrade
+      command: gitlab-backup create
+      become: true
+
+    - name: Find latest backup file
+      find:
+        paths: "{{ backup_dir }}"
+        patterns: '*.tar'
+        age_stamp: mtime
+        recurse: no
+      register: backup_files
+
+    - name: Show backup file found
+      debug:
+        msg: "Latest backup: {{ backup_files.files | sort(attribute='mtime') | last | default({}) | json_query('path') }}"
+      when: backup_files.matched > 0
+
+    - name: Download updated GitLab EE .deb package
+      get_url:
+        url: "https://packages.gitlab.com/gitlab/gitlab-ee/packages/debian/buster/gitlab-ee_{{ gitlab_version }}_{{ gitlab_arch }}.deb/download.deb"
+        dest: "/tmp/gitlab-ee_{{ gitlab_version }}_{{ gitlab_arch }}.deb"
+        headers:
+          Accept: "*/*"
+        mode: '0644'
+
+    - name: Install updated GitLab EE package
+      apt:
+        deb: "/tmp/gitlab-ee_{{ gitlab_version }}_{{ gitlab_arch }}.deb"
+
+    - name: Reconfigure GitLab
+      command: gitlab-ctl reconfigure
+
+    - name: Restart GitLab
+      command: gitlab-ctl restart

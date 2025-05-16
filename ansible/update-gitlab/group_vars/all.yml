@@ -1,0 +1,5 @@
+gitlab_old_version: "15.11.13-ee.0"
+gitlab_version: "16.0.10-ee.0"
+gitlab_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}"
+external_url: "http://192.168.64.30"
+backup_dir: "/var/opt/gitlab/backups"
