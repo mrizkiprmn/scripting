@@ -1,0 +1,63 @@
+---
+- name: Install GitLab and GitLab Runner
+  hosts: gitlab-server
+  become: true
+  vars_files:
+    - group_vars/all.yml
+
+  tasks:
+    - name: Ensure wget is installed
+      apt:
+        name: wget
+        state: present
+        update_cache: yes
+
+    - name: Ensure libatomic1 is installed (required for ARM)
+      apt:
+        name: libatomic1
+        state: present
+      when: gitlab_arch == 'arm64'
+
+    - name: Download GitLab EE .deb package
+      get_url:
+        url: "https://packages.gitlab.com/gitlab/gitlab-ee/packages/debian/buster/gitlab-ee_{{ gitlab_version }}_{{ gitlab_arch }}.deb/download.deb"
+        dest: "/tmp/gitlab-ee_{{ gitlab_version }}_{{ gitlab_arch }}.deb"
+        headers:
+          Accept: "*/*"
+        mode: '0644'
+
+    - name: Install GitLab EE package
+      apt:
+        deb: "/tmp/gitlab-ee_{{ gitlab_version }}_{{ gitlab_arch }}.deb"
+
+    - name: Set external_url in gitlab.rb
+      lineinfile:
+        path: /etc/gitlab/gitlab.rb
+        regexp: "^external_url"
+        line: "external_url '{{ external_url }}'"
+        create: yes
+
+    - name: Reconfigure GitLab
+      command: gitlab-ctl reconfigure
+
+    - name: Restart GitLab
+      command: gitlab-ctl restart
+
+    - name: Add GitLab Runner repository
+      shell: curl -s https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | bash
+      args:
+        executable: /bin/bash
+
+    - name: Install GitLab Runner
+      apt:
+        name: gitlab-runner
+        state: present
+        update_cache: yes
+
+    - name: Get GitLab Runner version
+      command: gitlab-runner --version
+      register: runner_version
+
+    - name: Show GitLab Runner version
+      debug:
+        var: runner_version.stdout
