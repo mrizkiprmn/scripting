@@ -1,0 +1,43 @@
+- name: Install Velero CLI
+  hosts: all
+  become: true
+  vars:
+    velero_version: "v1.16.1"
+  tasks:
+    - name: Determine system architecture (arm64 or amd64)
+      set_fact:
+        arch: "{{ 'arm64' if ansible_architecture in ['aarch64'] else 'amd64' }}"
+
+    - name: Set Velero CLI URL and filename
+      set_fact:
+        velero_filename: "velero-{{ velero_version }}-linux-{{ arch }}.tar.gz"
+        velero_url: "https://github.com/vmware-tanzu/velero/releases/download/{{ velero_version }}/{{ velero_filename }}"
+        velero_dirname: "velero-{{ velero_version }}-linux-{{ arch }}"
+
+    - name: Download Velero CLI tar.gz
+      get_url:
+        url: "{{ velero_url }}"
+        dest: "/tmp/{{ velero_filename }}"
+        mode: '0644'
+
+    - name: Extract Velero archive
+      unarchive:
+        src: "/tmp/{{ velero_filename }}"
+        dest: "/tmp"
+        remote_src: yes
+
+    - name: Move Velero binary to /usr/local/bin
+      copy:
+        src: "/tmp/{{ velero_dirname }}/velero"
+        dest: "/usr/local/bin/velero"
+        mode: '0755'
+
+    - name: Check Velero version
+      command: velero version --client-only
+      register: velero_output
+
+    - name: Print Velero version
+      debug:
+        var: velero_output.stdout
+
+
