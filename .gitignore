@@ -4,3 +4,4 @@ venv/
 gunicorn.pid
 __pycache__
 .env
+hosts

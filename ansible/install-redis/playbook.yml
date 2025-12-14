@@ -1,0 +1,90 @@
+---
+- name: Install Redis Server
+  hosts: semgrep
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Install required dependencies
+      apt:
+        name:
+          - lsb-release
+          - curl
+          - gpg
+        state: present
+        update_cache: yes
+    
+    - name: Download Redis GPG key
+      shell: |
+        curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+      register: gpg_download
+      until: gpg_download is succeeded
+      retries: 3
+      delay: 10
+    
+    - name: Set GPG key permissions
+      file:
+        path: /usr/share/keyrings/redis-archive-keyring.gpg
+        mode: '0644'
+    
+    - name: Add Redis repository
+      shell: |
+        echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
+    
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+    
+    - name: Install Redis
+      apt:
+        name: redis
+        state: present
+    
+    - name: Enable Redis service
+      service:
+        name: redis-server
+        enabled: yes
+        state: started
+    
+    - name: Verify Redis installation
+      shell: redis-server --version
+      register: redis_version
+    
+    - name: Show Redis version
+      debug:
+        msg: "{{ redis_version.stdout }}"
+    
+    - name: Check Redis service status
+      shell: systemctl status redis-server
+      register: redis_status
+    
+    - name: Show Redis service status
+      debug:
+        msg: "{{ redis_status.stdout_lines }}"
+    
+    - name: Test Redis connection
+      shell: redis-cli ping
+      register: redis_ping
+    
+    - name: Show Redis ping result
+      debug:
+        msg: "{{ redis_ping.stdout }}"
+    
+    - name: Installation summary
+      debug:
+        msg: |
+          ========================================
+          Redis Installation Complete
+          ========================================
+          
+          Redis Version: {{ redis_version.stdout }}
+          Redis Service: RUNNING
+          
+          Useful commands:
+          - redis-cli
+          - redis-cli ping
+          - redis-cli INFO
+          - systemctl status redis-server
+          - systemctl restart redis-server
+          
+          ========================================

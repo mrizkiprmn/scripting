@@ -1,0 +1,96 @@
+- name: Install and configure PostgreSQL 16 on Ubuntu 24.04 (Noble)
+  hosts: sonarqube
+  become: true
+
+  vars:
+    postgres_db: sonarqube
+    postgres_user: sonarqube
+    postgres_password: "sonarqube123"
+
+  tasks:
+    - name: Update apt cache and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Ensure PostgreSQL 16 is installed (Ubuntu official repo)
+      apt:
+        name:
+          - postgresql-16
+          - postgresql-client-16
+        state: present
+
+    - name: Ensure psycopg2 library is installed on remote host
+      apt:
+        name: python3-psycopg2
+        state: present
+
+    - name: Ensure PostgreSQL service is enabled and running
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Configure PostgreSQL to listen on all addresses
+      lineinfile:
+        path: /etc/postgresql/16/main/postgresql.conf
+        regexp: '^#?listen_addresses'
+        line: "listen_addresses = '*'"
+        backup: yes
+      notify:
+        - restart postgresql
+
+    - name: Allow remote connections in pg_hba.conf
+      lineinfile:
+        path: /etc/postgresql/16/main/pg_hba.conf
+        insertafter: EOF
+        line: "host all all 0.0.0.0/0 md5"
+        backup: yes
+      notify:
+        - restart postgresql
+
+    - name: Ensure PostgreSQL is running before DB setup
+      systemd:
+        name: postgresql
+        state: started
+
+    - name: Create PostgreSQL user
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "{{ postgres_user }}"
+        password: "{{ postgres_password }}"
+        role_attr_flags: CREATEDB,LOGIN
+        state: present
+
+    - name: Create PostgreSQL database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ postgres_db }}"
+        owner: "{{ postgres_user }}"
+        encoding: "UTF8"
+        state: present
+
+    - name: Grant privileges on database
+      become_user: postgres
+      community.postgresql.postgresql_privs:
+        db: "{{ postgres_db }}"
+        type: database
+        privs: ALL
+        objs: "{{ postgres_db }}"
+        roles: "{{ postgres_user }}"
+        state: present
+
+    - name: Verify PostgreSQL status
+      command: systemctl status postgresql
+      register: postgres_status
+      changed_when: false
+
+    - name: Show PostgreSQL status output
+      debug:
+        var: postgres_status.stdout_lines
+
+  handlers:
+    - name: restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted

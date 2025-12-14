@@ -1,5 +1,5 @@
 - name: Install Docker on Ubuntu 24.04 using convenience script
-  hosts: docker_server
+  hosts: semgrep
   become: true
 
   tasks:
@@ -54,13 +54,3 @@
         name: docker-compose-plugin
         state: present
       ignore_errors: yes
-
-    - name: Check if Docker is working properly
-      command: docker run hello-world
-      register: hello_world_output
-      changed_when: false
-      ignore_errors: yes
-
-    - name: Display Docker installation status
-      debug:
-        msg: "Docker installation {{ 'successful' if hello_world_output.rc == 0 else 'may have issues' }}"

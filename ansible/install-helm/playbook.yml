@@ -1,0 +1,69 @@
+---
+- name: Install Helm
+  hosts: k3s-master
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    helm_version: "latest"
+    helm_install_dir: "/usr/local/bin"
+    
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: Install required dependencies
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+        state: present
+    
+    - name: Download Helm installation script
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      register: helm_install
+      until: helm_install is succeeded
+      retries: 3
+      delay: 10
+    
+    - name: Verify Helm installation
+      shell: helm version
+      register: helm_version_output
+    
+    - name: Display Helm version
+      debug:
+        msg: "{{ helm_version_output.stdout_lines }}"
+    
+    - name: Add Helm bash completion
+      shell: |
+        helm completion bash | tee /etc/bash_completion.d/helm > /dev/null
+      ignore_errors: yes
+    
+    - name: Create helm directory in home
+      file:
+        path: "/root/.helm"
+        state: directory
+        mode: '0755'
+    
+    - name: Display installation summary
+      debug:
+        msg: |
+          ========================================
+          Helm Installation Complete
+          ========================================
+          
+          Helm Location: {{ helm_install_dir }}/helm
+          
+          Useful commands:
+          - helm version
+          - helm repo list
+          - helm repo add <name> <url>
+          - helm search repo <chart>
+          - helm install <release> <chart>
+          - helm list
+          
+          ========================================

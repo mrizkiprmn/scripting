@@ -1,0 +1,110 @@
+---
+- name: Install K3s Single Master Node
+  hosts: sonarqube
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    k3s_version: "latest"
+    
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: Install required dependencies
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - net-tools
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+    
+    - name: Disable firewall
+      service:
+        name: ufw
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+    
+    - name: Install K3s Master
+      shell: |
+        curl -sfL https://get.k3s.io | sh -
+      environment:
+        K3S_VERSION: "{{ k3s_version }}"
+      register: k3s_install
+      until: k3s_install is succeeded
+      retries: 3
+      delay: 10
+    
+    - name: Wait for K3s to be ready
+      wait_for:
+        port: 6443
+        delay: 5
+        timeout: 300
+    
+    - name: Create .kube directory
+      file:
+        path: "/root/.kube"
+        state: directory
+        mode: '0755'
+    
+    - name: Copy kubeconfig
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "/root/.kube/config"
+        remote_src: yes
+        mode: '0600'
+    
+    - name: Wait for K3s API server
+      shell: |
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        kubectl get nodes
+      register: k3s_ready
+      until: k3s_ready is succeeded
+      retries: 10
+      delay: 5
+    
+    - name: Display K3s nodes
+      shell: |
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        kubectl get nodes -o wide
+      register: nodes_info
+    
+    - name: Show K3s nodes
+      debug:
+        msg: "{{ nodes_info.stdout_lines }}"
+    
+    - name: Display cluster info
+      shell: |
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        kubectl cluster-info
+      register: cluster_info
+    
+    - name: Show cluster info
+      debug:
+        msg: "{{ cluster_info.stdout_lines }}"
+    
+    - name: Installation summary
+      debug:
+        msg: |
+          ========================================
+          K3s Single Master Installation Complete
+          ========================================
+          
+          Kubeconfig: /etc/rancher/k3s/k3s.yaml
+          
+          Useful commands:
+          - export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          - kubectl get nodes
+          - kubectl get pods -A
+          - kubectl cluster-info
+          
+          ========================================
